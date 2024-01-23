@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "main": "node main.js",
+    "scrape": "node scraper.js",
+    "to-excel": "node toExcel.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,7 +14,10 @@
   "license": "ISC",
   "dependencies": {
     "cheerio": "1.0.0-rc.12",
-    "puppeteer": "^21.7.0"
-  },
-  "type": "module"
+    "exceljs": "^4.4.0",
+    "google-auth-library": "^9.4.2",
+    "googleapis": "^130.0.0",
+    "puppeteer": "^21.7.0",
+    "string-strip-html": "^8.4.0"
+  }
 }
