@@ -1,19 +1,41 @@
 const fs = require("fs");
-const { GoogleAuth } = require("google-auth-library");
 const { google } = require("googleapis");
-const { OUTPUT_FILENAME } = require("./constants");
+const { OUTPUT_FILENAME, SCOPE } = require("./constants");
 
 const googleKey = require("./../google-key.json");
 
 require("dotenv").config();
 
-const SCOPE = [
-  "https://www.googleapis.com/auth/drive.file",
-  "https://www.googleapis.com/auth/drive",
-  "https://www.googleapis.com/auth/drive.file",
-  "https://www.googleapis.com/auth/drive.metadata",
-];
+/**
+ *
+ * @param {JWT} authClient
+ * @param {string} path
+ * @param {string} fileId
+ */
+async function updateFile(authClient, path, fileId) {
+  const drive = google.drive({ version: "v3", auth: authClient });
+  const media = {
+    mimeType: "application/vnd.ms-excel",
+    body: fs.createReadStream(`${path}/${OUTPUT_FILENAME}.xlsx`),
+  };
 
+  try {
+    await drive.files.update(
+      {
+        fileId,
+        media,
+      },
+      {}
+    );
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/**
+ *
+ * @returns {JWT}
+ */
 async function authorize() {
   const jwtClient = new google.auth.JWT(
     googleKey.client_email,
@@ -31,35 +53,12 @@ async function authorize() {
  */
 const upload = async (path = "./../result") => {
   console.log("[ Authorizing app ]");
+  const authClient = await authorize();
+  console.log("[ Uploading xlsx to drive ]");
 
-  authorize()
-    .then((authClient) => {
-      return new Promise((resolve, rejected) => {
-        console.log("[ Uploading xlsx to drive ]");
-        const drive = google.drive({ version: "v3", auth: authClient });
-
-        const media = {
-          mimeType: "application/vnd.ms-excel",
-          body: fs.createReadStream(`${path}/${OUTPUT_FILENAME}.xlsx`),
-        };
-
-        drive.files.update(
-          {
-            fileId: process.env.FILE_ID,
-            media,
-          },
-          {},
-          function (error, file) {
-            if (error) {
-              return rejected(error);
-            }
-            console.log("[ Upload complete! ]");
-            resolve(file);
-          }
-        );
-      });
-    })
-    .catch("error", console.error());
+  await updateFile(authClient, path, process.env.FILE_ID_PUBLIC);
+  await updateFile(authClient, path, process.env.FILE_ID_PRIVATE);
+  console.log("[ Upload complete! ]");
 };
 
 module.exports = { upload };

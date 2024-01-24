@@ -1,6 +1,7 @@
 const cheerio = require("cheerio");
 const puppeteer = require("puppeteer");
 const { Page } = require("puppeteer");
+const axios = require("axios");
 const { stripHtml } = require("string-strip-html");
 const fs = require("fs");
 const {
@@ -8,6 +9,7 @@ const {
   INTAKE_ATTRIBUTE,
   REGIONS,
   OUTPUT_FILENAME,
+  RETRIES_ON_UNIVERSITY,
 } = require("./constants");
 
 /**
@@ -24,7 +26,7 @@ const {
  */
 function pageSupplier(pageConsumer) {
   return async (path = "./../result") => {
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
 
     await pageConsumer(page, path);
@@ -75,7 +77,8 @@ function scrapeIntake(intakeTabContent) {
   const intakeStatistics = {};
 
   const stringArray = stripHtml(intakeTabContent.html())
-    .result.replace(/(Regular Applicants\s)+/g, "RA")
+    .result.replace(/\s+/g, " ")
+    .replace(/(Regular Applicants\s)+/g, "RA")
     .replace(/(Cofunding Applicants\s)+/g, "CA")
     .replace(/(Regular Awardees\s)+/g, "RW")
     .replace(/(Cofunding Awardees\s)+/g, "CW")
@@ -177,14 +180,37 @@ function scrapeIntake(intakeTabContent) {
   return intakeStatistics;
 }
 
+function languageScoreProcessor(score) {
+  if (score === "not") {
+    return "Not Accepted";
+  }
+
+  if (Number(score) === NaN) {
+    return undefined;
+  }
+
+  return Number(score);
+}
+
 /**
  *
- * @param {cheerio.Cheerio<cheerio.AnyNode>} requirementTabContent
+ * @param {cheerio.CheerioAPI} $page
+ * @param {cheerio.Cheerio<cheerio.Element>} universityInfoTab
  */
-function scrapeLanguage(requirementTabContent) {
-  const separatedStrings = stripHtml(requirementTabContent.html()).result.split(
-    " "
-  );
+function scrapeLanguage($page, universityInfoTab) {
+  let requirementTabContent = $page(
+    `#${universityInfoTab[1].attribs["id"]}.elementor-tab-content p:first-child`
+  ).html();
+
+  const regular = requirementTabContent.includes("English");
+
+  if (!regular) {
+    requirementTabContent = $page(
+      `#${universityInfoTab[1].attribs["id"]}.elementor-tab-content p:nth-child(2)`
+    ).html();
+  }
+
+  const separatedStrings = stripHtml(requirementTabContent).result.split(" ");
 
   const ieltsText = "IELTS:";
 
@@ -208,12 +234,10 @@ function scrapeLanguage(requirementTabContent) {
     ];
 
   return {
-    ielts: Number(ieltsScore) === NaN ? ieltsScore : Number(ieltsScore),
-    toefl: Number(toeflScore) === NaN ? toeflScore : Number(toeflScore),
-    det:
-      detScore === "not" || Number(detScore) === NaN
-        ? undefined
-        : Number(detScore),
+    ielts: languageScoreProcessor(ieltsScore),
+    toefl: languageScoreProcessor(toeflScore),
+    det: languageScoreProcessor(detScore),
+    regular,
   };
 }
 
@@ -236,12 +260,43 @@ function scrapeAcademicPeriod(rawString) {
 
 /**
  *
+ * @callback NavigationFunction
+ * @returns {Promise<void>}
+ */
+
+/**
+ *
+ * @param {NavigationFunction} navigationFunction
+ */
+async function navigationRetryWrapper(navigationFunction) {
+  let timeoutError = true;
+  let timeoutCount = 0;
+  while (timeoutError && timeoutCount <= RETRIES_ON_UNIVERSITY) {
+    try {
+      await navigationFunction();
+      timeoutError = false;
+    } catch (error) {
+      timeoutError = true;
+      timeoutCount++;
+      console.log(`Timeout! Retry ${timeoutCount}`);
+    }
+  }
+
+  if (timeoutError && timeoutCount >= RETRIES_ON_UNIVERSITY) {
+    throw error;
+  }
+}
+
+/**
+ *
  * @param {Page} page
  * @param {string} url
  *
  */
 async function scrapeUniversity(page, url) {
-  await page.goto(url);
+  await navigationRetryWrapper(async () => {
+    await page.goto(url, { waitUntil: "networkidle2" });
+  });
 
   const $universityPage = cheerio.load(await page.content());
 
@@ -271,11 +326,7 @@ async function scrapeUniversity(page, url) {
 
   const universityInfoTab = contentTab.slice(0, 4);
 
-  const language = scrapeLanguage(
-    $universityPage(
-      `#${universityInfoTab[1].attribs["id"]}.elementor-tab-content p:first-child`
-    )
-  );
+  const language = scrapeLanguage($universityPage, universityInfoTab);
 
   const academicPeriod = scrapeAcademicPeriod(
     stripHtml(
@@ -328,7 +379,12 @@ async function scrapeUniversity(page, url) {
 const scrape = pageSupplier(async (page, path) => {
   console.log("[ Scraping data from the site ]");
 
-  await page.goto("https://iisma.kemdikbud.go.id/info/host-universities-list/");
+  await navigationRetryWrapper(async () => {
+    await page.goto(
+      "https://iisma.kemdikbud.go.id/info/host-universities-list/",
+      { waitUntil: "networkidle2" }
+    );
+  });
 
   const $ = cheerio.load(await page.content());
 
@@ -387,9 +443,12 @@ const scrape = pageSupplier(async (page, path) => {
       .filter((link) => !!link);
 
     regionAndUniversity[REGIONS[i]] = links;
+
+    // console.log(links);
   });
 
   const universityFailedToFetch = [];
+  const universityIrregular = [];
 
   for (let i = 0; i < REGIONS.length; i++) {
     for (let j = 0; j < regionAndUniversity[REGIONS[i]].length; j++) {
@@ -404,6 +463,10 @@ const scrape = pageSupplier(async (page, path) => {
         if (!result) {
           regionAndUniversity[REGIONS[i]][j].available = false;
           continue;
+        }
+
+        if (!result.language.regular) {
+          universityIrregular.push(result);
         }
 
         regionAndUniversity[REGIONS[i]][j] = {
@@ -421,15 +484,23 @@ const scrape = pageSupplier(async (page, path) => {
   }
 
   console.log("\n[ Completed scraping! ]");
+  console.log(
+    `Universities with irregular requirements (${universityIrregular.length}/${totalUniversity}):`
+  );
+  universityIrregular.forEach(({ name }) => {
+    console.log(`${name}`);
+  });
+  console.log("");
   if (universityFailedToFetch.length === 0) {
-    console.log("All university fetched without error.");
+    console.log("All university fetched without error.\n");
   } else {
     console.log(
-      `Failed fetching these universities (${universityFailedToFetch.length}/${totalUniversity}):\n`
+      `Failed fetching these universities (${universityFailedToFetch.length}/${totalUniversity}): `
     );
     universityFailedToFetch.forEach((university) => {
       console.log(`${university.name} : ${university.link}`);
     });
+    console.log("");
   }
 
   console.log("[ Writing result to json file ]");
@@ -457,16 +528,17 @@ const scrapeTest = pageSupplier(async (page) => {
     // "https://iisma.kemdikbud.go.id/info/21-university-of-texas-at-austin/"
     // "https://iisma.kemdikbud.go.id/info/20-ku-leuven/"
     // "https://iisma.kemdikbud.go.id/info/24-m-v-lomonosov-moscow-state-university/"
-    "https://iisma.kemdikbud.go.id/info/16-university-of-warwick/"
+    // "https://iisma.kemdikbud.go.id/info/29-penn-state-university/"
+    // "https://iisma.kemdikbud.go.id/info/16-university-of-warwick/"
     // "https://iisma.kemdikbud.go.id/info/23-korea-university/"
     // "https://iisma.kemdikbud.go.id/info/lolos-67-sciences-po/"
     // "https://iisma.kemdikbud.go.id/info/38-universiti-kebangsaan-malaysia/"
     // "https://iisma.kemdikbud.go.id/info/58-university-of-sussex/",
     // "https://iisma.kemdikbud.go.id/info/53-universidad-autonoma-de-madrid/"
-    // "https://iisma.kemdikbud.go.id/info/s90-prince-of-songkla-university/"
+    "https://iisma.kemdikbud.go.id/info/s90-prince-of-songkla-university/"
   );
 
-  console.log(univ);
+  console.log(univ.language);
   // console.log(univ.intakeStatistics);
 
   // console.log(univ.courses);

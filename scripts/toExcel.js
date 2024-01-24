@@ -1,5 +1,10 @@
 const ExcelJS = require("exceljs");
-const { REGIONS, SHEET_COLUMNS, OUTPUT_FILENAME } = require("./constants");
+const {
+  REGIONS,
+  SHEET_COLUMNS,
+  OUTPUT_FILENAME,
+  INTAKE_ATTRIBUTE,
+} = require("./constants");
 const fs = require("fs");
 
 /**
@@ -25,6 +30,59 @@ function widthOfCell(cell) {
   }
 }
 
+const contentOfState = [
+  `University didn't participate in this year`,
+  `This admission route didn't exist in this year`,
+  `No one went through this route this year`,
+];
+
+const admissionRoutes = ["RA", "RW", "CA", "CW"];
+
+function intakeStatisticsUnfolder(intakeStatistics, year) {
+  const applicableAdmissionRoutes =
+    year === 2023 ? admissionRoutes : admissionRoutes.slice(0, 2);
+
+  const result = applicableAdmissionRoutes
+    .map((admissionRoute) => {
+      const stateOfAttribute = !intakeStatistics[year]
+        ? 0
+        : !applicableAdmissionRoutes.includes(admissionRoute)
+        ? 1
+        : !intakeStatistics?.[year]?.[admissionRoute]
+        ? 2
+        : 3;
+
+      return [
+        stateOfAttribute >= contentOfState.length
+          ? intakeStatistics?.[year]?.[admissionRoute]?.["amount"] ??
+            "No amount? Bug somewhere"
+          : contentOfState[stateOfAttribute],
+        ...INTAKE_ATTRIBUTE.map((attribute) => {
+          if (stateOfAttribute < contentOfState.length) {
+            return [
+              contentOfState[stateOfAttribute],
+              contentOfState[stateOfAttribute],
+            ];
+          }
+
+          const attributeObject =
+            intakeStatistics?.[year]?.[admissionRoute]?.[attribute];
+          const lowerBound = attributeObject?.["lowerBound"];
+          const upperBound = attributeObject?.["upperBound"];
+
+          if (!lowerBound && !upperBound) {
+            return [`None with this EPT`, `None with this EPT`];
+          }
+
+          return [lowerBound, upperBound];
+        }),
+      ];
+    })
+    .flat(5);
+
+  return result;
+}
+
 /**
  *
  * @param {string} path
@@ -35,6 +93,7 @@ const toExcel = async (path = "./../result") => {
   const data = JSON.parse(fs.readFileSync(`${path}/${OUTPUT_FILENAME}.json`));
 
   const workbook = new ExcelJS.Workbook();
+  // console.log("Sheet columns : ", SHEET_COLUMNS.length);
 
   REGIONS.forEach((region) => {
     console.log(`Processing region: ${region}`);
@@ -59,156 +118,8 @@ const toExcel = async (path = "./../result") => {
             university.language.ielts ?? "",
             university.language.toefl ?? "",
             university.language.det ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RA"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2022]?.["RW"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RA"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CA"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["RW"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["amount"] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["GPA"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["GPA"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["IELTS"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["IELTS"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["TOEFL"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["TOEFL"]?.[
-              "upperBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["DET"]?.[
-              "lowerBound"
-            ] ?? "",
-            university.intakeStatistics?.[2023]?.["CW"]?.["DET"]?.[
-              "upperBound"
-            ] ?? "",
+            ...intakeStatisticsUnfolder(university.intakeStatistics, 2022),
+            ...intakeStatisticsUnfolder(university.intakeStatistics, 2023),
             ...university.courses.map(({ title, description }) => {
               return {
                 richText: [
@@ -266,16 +177,6 @@ const toExcel = async (path = "./../result") => {
     });
     headerRow.height = lineHeight * maxLine;
 
-    // Adjust the alignment of all cells
-    regionSheet.eachRow((row) => {
-      row.eachCell((cell) => {
-        cell.alignment = {
-          vertical: "top",
-          horizontal: "left",
-        };
-      });
-    });
-
     // Adjust the courses cells
     regionSheet.columns.forEach((col, index) => {
       if (index + 1 <= SHEET_COLUMNS.length) {
@@ -302,22 +203,63 @@ const toExcel = async (path = "./../result") => {
         maxColumnWidth = Math.max(courseTitleLength, maxColumnWidth);
       });
 
-      col.width = maxColumnWidth * 2;
+      col.width = maxColumnWidth + 5;
     });
 
-    // Auto-width for each non-course columns
+    // Auto-width for each non-course columns and wrap text for intakeStatistics cell content
     regionSheet.columns.forEach((column, index) => {
       if (index + 1 > SHEET_COLUMNS.length) {
         return;
       }
 
+      const isIntakeStatisticsColumn = index > 6;
+
       let maxColumnLength = 0;
-      column.eachCell((cell) => {
+      column.eachCell((cell, rowNumber) => {
+        // Do not extend the size of the column of intake statistics except for the header row
+        // Wrap the text instead
+        if (isIntakeStatisticsColumn && rowNumber > 1) {
+          cell.alignment = {
+            wrapText: true,
+          };
+          return;
+        }
+
         const width = widthOfCell(cell);
         maxColumnLength = Math.max(maxColumnLength, 10, width);
       });
 
       column.width = maxColumnLength + 5;
+    });
+
+    // Adjust the alignment of all cells
+    regionSheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        if (!cell.alignment) {
+          cell.alignment = {};
+        }
+        cell.alignment.vertical = "top";
+        cell.alignment.horizontal = "left";
+      });
+    });
+
+    // Adjust the color of intake statistics with special cases
+    regionSheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        if (!contentOfState.includes(cell.value)) {
+          return;
+        }
+
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "000000" },
+        };
+
+        cell.font = {
+          color: { argb: "FFFFFF" },
+        };
+      });
     });
   });
 

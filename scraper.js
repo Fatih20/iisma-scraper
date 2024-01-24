@@ -1,5 +1,3 @@
-const { scrape, scrapeTest } = require("./scripts/scraper");
+const { scrape } = require("./scripts/scraper");
 
-// scrape("./result");
-
-scrapeTest();
+scrape("./result");

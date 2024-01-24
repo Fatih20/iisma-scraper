@@ -6,14 +6,17 @@
   "scripts": {
     "main": "node main.js",
     "scrape": "node scraper.js",
+    "scrape-test": "node scraperTest.js",
     "to-excel": "node toExcel.js",
     "upload": "node upload.js",
+    "log": "node log.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "axios": "^1.6.5",
     "cheerio": "1.0.0-rc.12",
     "dotenv": "^16.4.0",
     "exceljs": "^4.4.0",
