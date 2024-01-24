@@ -32,7 +32,7 @@ function widthOfCell(cell) {
 const toExcel = async (path = "./../result") => {
   console.log("[ Processing scraped data into spreadsheet ]");
 
-  const data = JSON.parse(fs.readFileSync("./result/res.json"));
+  const data = JSON.parse(fs.readFileSync(`${path}/${OUTPUT_FILENAME}.json`));
 
   const workbook = new ExcelJS.Workbook();
 

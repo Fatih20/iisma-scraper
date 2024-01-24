@@ -5,7 +5,7 @@ const { upload } = require("./scripts/upload");
 const main = async () => {
   await scrape("./result");
   await toExcel("./result");
-  // await upload();
+  await upload("./result");
 };
 
 main();

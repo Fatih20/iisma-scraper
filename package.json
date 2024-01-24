@@ -7,6 +7,7 @@
     "main": "node main.js",
     "scrape": "node scraper.js",
     "to-excel": "node toExcel.js",
+    "upload": "node upload.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "cheerio": "1.0.0-rc.12",
+    "dotenv": "^16.4.0",
     "exceljs": "^4.4.0",
     "google-auth-library": "^9.4.2",
     "googleapis": "^130.0.0",
