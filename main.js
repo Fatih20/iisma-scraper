@@ -1,11 +1,11 @@
-const { scrape } = require("./scraper");
-const { toExcel } = require("./toExcel");
-const { upload } = require("./upload");
+const { scrape } = require("./scripts/scraper");
+const { toExcel } = require("./scripts/toExcel");
+const { upload } = require("./scripts/upload");
 
 const main = async () => {
-  await scrape();
-  await toExcel();
-  await upload();
+  await scrape("./result");
+  await toExcel("./result");
+  // await upload();
 };
 
 main();

@@ -1,5 +1,7 @@
 const YEARS = ["2022", "2023"];
 
+const OUTPUT_FILENAME = "res";
+
 const REGIONS = [
   "America and Canada",
   "Asia",
@@ -13,11 +15,11 @@ const INTAKE_ATTRIBUTE = ["GPA", "IELTS", "TOEFL", "DET"];
 const SHEET_COLUMNS = [
   { header: "University Name", key: "name" },
   { header: "Location", key: "location" },
-  { header: "Academic Period (Start)", key: "start" },
-  { header: "Academic Period (End)", key: "end" },
-  { header: "IELTS (Univ Req)", key: "ielts-univ-req" },
-  { header: "TOEFL (Univ Req)", key: "toefl-univ-req" },
-  { header: "DET (Univ Req)", key: "det-univ-req" },
+  { header: "Academic Period\n(Start)", key: "start" },
+  { header: "Academic Period\n(End)", key: "end" },
+  { header: "IELTS\n(Univ Req)", key: "ielts-univ-req" },
+  { header: "TOEFL\n(Univ Req)", key: "toefl-univ-req" },
+  { header: "DET\n(Univ Req)", key: "det-univ-req" },
   { header: "Regular Applicants\n2022\nAmount", key: "ra-2022-amount" },
   { header: "Regular Applicants\n2022\nGPA Bottom", key: "ra-2022-gpa-bottom" },
   { header: "Regular Applicants\n2022\nGPA Upper", key: "ra-2022-gpa-upper" },
@@ -163,4 +165,10 @@ const SHEET_COLUMNS = [
   { header: "Co-Funding Awardee\n2023\nDET Upper", key: "cw-2023-det-upper" },
 ];
 
-module.exports = { REGIONS, INTAKE_ATTRIBUTE, YEARS, SHEET_COLUMNS };
+module.exports = {
+  REGIONS,
+  INTAKE_ATTRIBUTE,
+  YEARS,
+  SHEET_COLUMNS,
+  OUTPUT_FILENAME,
+};
