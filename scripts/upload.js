@@ -30,12 +30,6 @@ async function authorize() {
  * @param {string} path
  */
 const upload = async (path = "./../result") => {
-  fs.readdir(path, (err, files) => {
-    files.forEach((file) => {
-      console.log(file);
-    });
-  });
-
   console.log("[ Authorizing app ]");
 
   authorize()

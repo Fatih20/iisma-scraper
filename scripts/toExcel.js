@@ -209,32 +209,36 @@ const toExcel = async (path = "./../result") => {
             university.intakeStatistics?.[2023]?.["CW"]?.["DET"]?.[
               "upperBound"
             ] ?? "",
-            ...university.courses.map(({ title }) => title),
+            ...university.courses.map(({ title, description }) => {
+              return {
+                richText: [
+                  {
+                    font: {
+                      name: "Arial",
+                      bold: true,
+                      color: { argb: "000000" },
+                      family: 2,
+                    },
+                    text: `${title}\n\n`,
+                  },
+                  {
+                    font: {
+                      name: "Arial",
+                      color: { argb: "000000" },
+                      family: 2,
+                    },
+                    text: `${description}`,
+                  },
+                ],
+              };
+            }),
           ];
 
       regionSheet.addRow(rowArray);
 
-      if (university.available) {
-        const columnStartOfCourses = SHEET_COLUMNS.length + 1;
-
-        const courseDescriptionArray = [];
-        university.courses.forEach(({ description }, index) => {
-          courseDescriptionArray[columnStartOfCourses + index] = description;
-        });
-
-        regionSheet.addRow(courseDescriptionArray);
-      }
-
-      //   Merge non-course cells
-      for (let i = 1; i < SHEET_COLUMNS.length + 1; i++) {
-        const value = regionSheet.getCell(index * 2 + 2, i).value;
-        regionSheet.mergeCells(index * 2 + 2, i, index * 2 + 3, i);
-        regionSheet.getCell(index * 2 + 2, i).value = value;
-      }
-
       //   Add hyperlink to the university name
-      regionSheet.getCell(index * 2 + 2, 1).value = {
-        text: regionSheet.getCell(index * 2 + 2, 1).value,
+      regionSheet.getCell(index + 2, 1).value = {
+        text: regionSheet.getCell(index + 2, 1).value,
         hyperlink: university.link,
       };
     });
@@ -243,6 +247,7 @@ const toExcel = async (path = "./../result") => {
     const lineHeight = 12; // height per line is roughly 12
     const headerRow = regionSheet.getRow(1);
     let maxLine = 1;
+
     headerRow.eachCell((cell) => {
       cell.font = {
         name: "Arial",
@@ -272,52 +277,47 @@ const toExcel = async (path = "./../result") => {
     });
 
     // Adjust the courses cells
-    regionSheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) {
+    regionSheet.columns.forEach((col, index) => {
+      if (index + 1 <= SHEET_COLUMNS.length) {
         return;
       }
 
-      const isCourseTitle = rowNumber % 2 === 0;
-
-      row.eachCell((cell, colNumber) => {
-        if (colNumber <= SHEET_COLUMNS.length) {
+      let maxColumnWidth = 0;
+      col.eachCell((cell, rowNumber) => {
+        if (rowNumber === 1) {
           return;
         }
 
-        if (isCourseTitle) {
-          cell.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "000000" },
-          };
-
-          cell.font = {
-            name: "Arial",
-            color: { argb: "FFFFFF" },
-            family: 2,
-          };
+        if (!cell.value) {
           return;
         }
+
         cell.alignment = {
           wrapText: true,
           vertical: "top",
           horizontal: "left",
         };
+
+        const courseTitleLength = cell.value.richText[0].text.trim().length;
+        maxColumnWidth = Math.max(courseTitleLength, maxColumnWidth);
       });
+
+      col.width = maxColumnWidth * 2;
     });
 
-    // Auto-width for each columns
-    regionSheet.columns.forEach((column) => {
+    // Auto-width for each non-course columns
+    regionSheet.columns.forEach((column, index) => {
+      if (index + 1 > SHEET_COLUMNS.length) {
+        return;
+      }
+
       let maxColumnLength = 0;
-      column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-        if (rowNumber !== 1 && rowNumber % 2 === 1) {
-          return;
-        }
+      column.eachCell((cell) => {
         const width = widthOfCell(cell);
         maxColumnLength = Math.max(maxColumnLength, 10, width);
       });
 
-      column.width = maxColumnLength + 2;
+      column.width = maxColumnLength + 5;
     });
   });
 
