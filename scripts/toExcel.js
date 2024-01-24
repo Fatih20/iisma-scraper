@@ -212,6 +212,8 @@ const toExcel = async (path = "./../result") => {
             ...university.courses.map(({ title }) => title),
           ];
 
+      regionSheet.addRow(rowArray);
+
       if (university.available) {
         const columnStartOfCourses = SHEET_COLUMNS.length + 1;
 
@@ -220,7 +222,6 @@ const toExcel = async (path = "./../result") => {
           courseDescriptionArray[columnStartOfCourses + index] = description;
         });
 
-        regionSheet.addRow(rowArray);
         regionSheet.addRow(courseDescriptionArray);
       }
 
@@ -322,14 +323,13 @@ const toExcel = async (path = "./../result") => {
 
   console.log("[ Writing result to xlsx file ]");
   await workbook.xlsx.writeFile(`${path}/${OUTPUT_FILENAME}.xlsx`);
-  console.log("");
+  console.log("[ Result written! ]\n");
   console.log("[ Statistics ]");
   console.log(
     `Total university: ${REGIONS.map((region) => data?.[region].length).reduce(
       (prev, curr) => prev + curr
     )}`
   );
-  console.log("[ Result written! ]\n");
 
   REGIONS.forEach((region) => {
     const universities = data?.[region];
