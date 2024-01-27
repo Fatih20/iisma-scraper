@@ -57,7 +57,7 @@ const upload = async (path = "./../result") => {
   console.log("[ Uploading xlsx to drive ]");
 
   await updateFile(authClient, path, process.env.FILE_ID_PUBLIC);
-  await updateFile(authClient, path, process.env.FILE_ID_PRIVATE);
+  // await updateFile(authClient, path, process.env.FILE_ID_PRIVATE);
   console.log("[ Upload complete! ]");
 };
 
